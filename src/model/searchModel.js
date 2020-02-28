@@ -9,7 +9,6 @@ SearchModel.prototype = {
   constructor: SearchModel,
   async fetchData(inputValue){
     const matchingData = data
-    console.log(matchingData)
     await sleep(400);
     this.matchArray(matchingData, inputValue);
   },
