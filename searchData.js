@@ -1,5 +1,5 @@
-{
-  "searchData": [
+data = {
+  searchData: [
     "ability",
     "able",
     "about",

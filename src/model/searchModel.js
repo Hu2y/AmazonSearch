@@ -1,3 +1,5 @@
+
+
 function SearchModel() {
   this.matchingItem = [];
   this.LOCALHOST_URL = "http://127.0.0.1:4000";
@@ -6,9 +8,9 @@ function SearchModel() {
 SearchModel.prototype = {
   constructor: SearchModel,
   async fetchData(inputValue){
-    const response = await fetch(this.LOCALHOST_URL);
-    const matchingData = await response.json();
-    await sleep(300);
+    const matchingData = data
+    console.log(matchingData)
+    await sleep(400);
     this.matchArray(matchingData, inputValue);
   },
 
