@@ -9,7 +9,7 @@ SearchModel.prototype = {
   constructor: SearchModel,
   async fetchData(inputValue){
     const matchingData = data
-    await sleep(400);
+    await sleep(100);
     this.matchArray(matchingData, inputValue);
   },
 

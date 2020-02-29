@@ -1,10 +1,8 @@
-function Controller() {
-  this.searchInput = $("#searchInput");
-  this.autoList = $(".autoList");
-  this.searchBackground = $(".searchBackground")
-  this.searchModel = new SearchModel();
-  this.autoListIndex = 0;
-  this.validateInput = false;
+function Controller({searchModel, searchInput, autoList, searchBackground}) {
+  this.searchInput = searchInput
+  this.autoList = autoList
+  this.searchBackground = searchBackground
+  this.searchModel = searchModel
   this.init();
 }
 
@@ -13,6 +11,8 @@ Controller.prototype = {
   init() {
     this.inputHandler();
     this.eventHandler();
+    this.autoListIndex = 0;
+    this.validateInput = false;
   },
 
   eventHandler() {
@@ -22,9 +22,52 @@ Controller.prototype = {
 
   inputHandler() {
     this.searchInput.addEventListener("input", this.validationInput.bind(this));
-    this.searchInput.addEventListener("keyup", this.inputKeyupEvent.bind(this));
-    this.searchInput.addEventListener("keydown", this.inputKeydownEvent.bind(this));
-    this.searchInput.addEventListener("keypress", this.searchInputEnterEvent.bind(this))
+    this.searchInput.addEventListener("keydown", this.inputEvent.bind(this));
+  },
+
+  inputEvent(e) {
+    this.searchList = $(".searchList")
+    const { keyCode } = e
+    switch(keyCode) {
+      case ENTER :
+        this.searchInputEnterEvent()
+        break;
+      case KEYUP :
+        this.inputKeyupEvent()
+        e.preventDefault()
+        break
+      case KEYDOWN :
+        this.inputKeydownEvent()
+        e.preventDefault()
+        break 
+    }
+    
+  },
+
+  validationInput(e) {
+    const { target: { value } } = e
+    let pattern = /^[a-zA-Z]+$/;
+    this.validateInput = value.length > 0 && pattern.test(value) === true;
+    this.initScroll()
+    if (this.validateInput) {
+      this.connectModel(value)
+      this.searchBackground.style.visibility = 'visible';
+      this.autoList.style.display = 'block';
+    } else {
+      this.searchBackgroundClickedEvent()
+      this.validateInput = false
+    }
+  },
+
+  connectModel(value) {
+    (async () => {
+      try {
+        await this.searchModel.fetchData(value);
+        new autoCompleteView(this.searchModel.matchingItem, value);
+      } catch (err) {
+        console.log(err);
+      }
+    })();
   },
 
   searchBackgroundClickedEvent() {
@@ -33,106 +76,84 @@ Controller.prototype = {
   },
 
   insertInputValueEvent(e) {
-    this.searchInput.value = e.target.innerText
+    const {target: { innerText } } = e
+    this.searchInput.value = innerText
     this.searchBackgroundClickedEvent()
   },
 
-  searchInputEnterEvent(e) {
-    if(e.keyCode !== ENTER || this.searchList.childElementCount === 0) return
+  searchInputEnterEvent() {
     this.searchInput.value = $('.searchList .selected').innerText
     this.searchBackgroundClickedEvent()
   },
 
-  validationInput(e) {
-    let message = e.target.value;
-    let pattern = /^[a-zA-Z]+$/;
-    this.validateInput = message.length > 0 && pattern.test(message) === true;
-    if (this.validateInput) {
-      this.autoListIndex = 0
-      this.searchBackground.style.visibility = 'visible';
-      this.autoList.style.display = 'block';
-      this.connectModel(message)
-      this.autoList.scrollTop = 0
-    } else {
-      this.searchBackground.style.visibility = 'hidden';
-      this.autoList.style.display = 'none';
-      this.autoListIndex = 0
-      this.validateInput = false
-    }
-  },
-
-  connectModel(message) {
-    (async () => {
-      try {
-        await this.searchModel.fetchData(message);
-        new autoCompleteView(this.searchModel.matchingItem, message);
-      } catch (err) {
-        console.log(err);
-      }
-    })();
-  },
-
-  inputKeyupEvent(e) { //  일단 작동은 됨, 로직이 엉망.. 다 구현 후 코드 정리
-    if(e.keyCode !== KEYUP || this.searchList.childElementCount === 0) return
-    if(!this.validateInput) return this.initScroll()
-
-    this.searchList = $(".searchList")
-    if(this.autoListIndex === 0) {
-      this.autoListIndex = this.searchList.childElementCount
-      this.autoList.scrollTop = this.autoList.scrollHeight
-      this.selectClass(this.autoListIndex, 'add')
-    } else if (this.autoListIndex > 1 && this.autoListIndex <= this.searchList.childElementCount) {
-      this.autoListIndex--
-      this.selectClass(this.autoListIndex+1, 'remove')
-      this.selectClass(this.autoListIndex, 'add')
+  inputKeyupEvent() {
+    if(this.searchList.childElementCount === 0) return
+    if (this.autoListIndex > 1 && this.autoListIndex <= this.searchList.childElementCount) {
+      this.selectClass(this.autoListIndex, 'remove')
+      this.selectClass(this.autoListIndex-1, 'add')
       this.scrollDownControl()
     } else if (this.autoListIndex === 1) {
-      this.autoListIndex--
-      this.selectClass(this.autoListIndex+1, 'remove')
-      this.scrollDownControl()
+      this.selectClass(this.autoListIndex, 'remove')
+    }
+    this.decreaseAutoListIndex()
+  },
+
+  decreaseAutoListIndex() {
+    this.autoListIndex--
+    if(this.autoListIndex < 1) {
+      this.endScroll()
+      this.selectClass(this.autoListIndex, 'add')
     }
   },
 
-  inputKeydownEvent(e) { //  일단 작동은 됨, 로직이 엉망.. 다 구현 후 코드 정리
-    this.searchList = $(".searchList")
-    if(e.keyCode !== KEYDOWN || this.searchList.childElementCount === 0) return
-    if(!this.validateInput) return this.initScroll()
-    
+  inputKeydownEvent() {
+    if(this.searchList.childElementCount === 0) return
     if(this.autoListIndex === 0) {
-      this.autoListIndex++
-      this.selectClass(this.autoListIndex, 'add')
+      this.selectClass(this.autoListIndex+1, 'add')
     } else if (this.autoListIndex > 0 && this.autoListIndex < this.searchList.childElementCount) {
-      this.autoListIndex++
-      this.selectClass(this.autoListIndex-1, 'remove')
-      this.selectClass(this.autoListIndex, 'add')
+      this.selectClass(this.autoListIndex, 'remove')
+      this.selectClass(this.autoListIndex+1, 'add')
       this.scrollUpControl()
     } else if (this.autoListIndex === this.searchList.childElementCount) {
       this.selectClass(this.autoListIndex, 'remove')
-      this.autoListIndex = 0
-      this.autoList.scrollTop = 0
     }
+    this.increaseAutoListIndex()
   },
 
-  selectClass(index, method) { // Prototype로 util에 만들어 놓기.. Array.prototype.addOrRemove = function(...){}
-    if(method === 'add') {
-      $(`li:nth-child(${index})`).classList.add('selected')
-    } else if(method === 'remove') {
-      $(`li:nth-child(${index})`).classList.remove('selected')
-    } else {
-      return
-    }  
+  increaseAutoListIndex() {
+    this.autoListIndex++
+    if(this.autoListIndex > this.searchList.childElementCount) this.initScroll()
+  },
+
+  
+
+  selectClass(index, method) {
+    switch(method) {
+      case 'add' :
+        $(`li:nth-child(${index})`).classList.add('selected');
+        break;
+      case 'remove' :
+        $(`li:nth-child(${index})`).classList.remove('selected')
+      default:
+        break;
+    }
   },
   
   scrollUpControl() {
-    this.autoList.scrollTop += 18 // 일단 구현부터...
+    this.autoList.scrollTop += SCROLLUPNUM
   },
 
   scrollDownControl() {
-    this.autoList.scrollTop -= 18 // 일단 구현부터...
+    this.autoList.scrollTop -= SCROLLDOWNNUM
   },
   
   initScroll() {
     this.autoListIndex = 0,
     this.autoList.scrollTop = 0
+  },
+
+  endScroll() {
+    this.autoListIndex = this.searchList.childElementCount
+    this.autoList.scrollTop = this.autoList.scrollHeight
   }
 };
